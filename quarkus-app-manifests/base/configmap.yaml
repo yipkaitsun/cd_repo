@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: quarkus-app-config
+  namespace: default
+data:
+  # Database URL - example configuration
+  database.url: "jdbc:postgresql://postgres:5432/mydb"
+  database.driver: "org.postgresql.Driver"
+  
+  # App configuration
+  app.name: "quarkus-app"
+  app.version: "1.0.0"
+  
+  # Quarkus specific
+  quarkus.http.port: "8080"
+  quarkus.log.level: "INFO"
+
