@@ -4,11 +4,10 @@ metadata:
   name: quarkus-app-ingress
   namespace: default
   annotations:
-    # Nginx specific annotations
-    nginx.ingress.kubernetes.io/rewrite-target: /
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # Traefik specific annotations
+    traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
   - http:
       paths:

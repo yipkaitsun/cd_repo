@@ -3,8 +3,7 @@ kind: Ingress
 metadata:
   name: quarkus-app-ingress
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
   rules:
   - http:
