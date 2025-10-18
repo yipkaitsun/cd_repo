@@ -6,5 +6,5 @@ metadata:
   namespace: vpn
 data:
   PEERS: "3"
-  SERVERURL: "auto"  # Update with your actual server IP after deployment
+  SERVERURL: "172.31.14.164"  # Update with your actual server IP after deployment
 
