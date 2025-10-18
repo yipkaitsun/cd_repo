@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wireguard-config
+  namespace: vpn
+data:
+  PEERS: "10"
+  SERVERURL: "auto"  # Update with your actual server IP after deployment
+
