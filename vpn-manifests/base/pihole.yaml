@@ -1,0 +1,168 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pihole-config
+  namespace: vpn
+data:
+  TZ: "Asia/Tokyo"
+  WEBPASSWORD: "admin123"  # Change this password!
+  SERVERIP: "10.43.100.100"  # Pi-hole service ClusterIP
+  DNS1: "1.1.1.1"  # Cloudflare DNS
+  DNS2: "1.0.0.1"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pihole-data
+  namespace: vpn
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pihole-dnsmasq
+  namespace: vpn
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pihole
+  namespace: vpn
+  labels:
+    app: pihole
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pihole
+  template:
+    metadata:
+      labels:
+        app: pihole
+    spec:
+      containers:
+      - name: pihole
+        image: pihole/pihole:latest
+        env:
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              name: pihole-config
+              key: TZ
+        - name: WEBPASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: pihole-config
+              key: WEBPASSWORD
+        - name: ServerIP
+          valueFrom:
+            configMapKeyRef:
+              name: pihole-config
+              key: SERVERIP
+        - name: DNS1
+          valueFrom:
+            configMapKeyRef:
+              name: pihole-config
+              key: DNS1
+        - name: DNS2
+          valueFrom:
+            configMapKeyRef:
+              name: pihole-config
+              key: DNS2
+        - name: DNSMASQ_LISTENING
+          value: "all"
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        - containerPort: 53
+          name: dns-tcp
+          protocol: TCP
+        - containerPort: 53
+          name: dns-udp
+          protocol: UDP
+        volumeMounts:
+        - name: pihole-data
+          mountPath: /etc/pihole
+        - name: pihole-dnsmasq
+          mountPath: /etc/dnsmasq.d
+        securityContext:
+          capabilities:
+            add:
+              - NET_ADMIN
+      volumes:
+      - name: pihole-data
+        persistentVolumeClaim:
+          claimName: pihole-data
+      - name: pihole-dnsmasq
+        persistentVolumeClaim:
+          claimName: pihole-dnsmasq
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pihole-web
+  namespace: vpn
+spec:
+  type: ClusterIP
+  selector:
+    app: pihole
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pihole-dns
+  namespace: vpn
+spec:
+  type: ClusterIP
+  clusterIP: 10.43.100.100  # Fixed IP for DNS
+  selector:
+    app: pihole
+  ports:
+  - port: 53
+    targetPort: 53
+    protocol: TCP
+    name: dns-tcp
+  - port: 53
+    targetPort: 53
+    protocol: UDP
+    name: dns-udp
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pihole-ingress
+  namespace: vpn
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: pihole.vpn.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: pihole-web
+            port:
+              number: 80
+

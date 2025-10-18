@@ -1,0 +1,135 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wireguard-config
+  namespace: vpn
+data:
+  PUID: "1000"
+  PGID: "1000"
+  TZ: "Asia/Tokyo"
+  SERVERURL: "18.183.57.208"  # Your EC2 public IP
+  SERVERPORT: "51820"
+  PEERS: "5"  # Number of client configs to generate
+  PEERDNS: "10.43.100.100"  # Pi-hole DNS server for ad blocking
+  INTERNAL_SUBNET: "10.13.13.0"
+  ALLOWEDIPS: "0.0.0.0/0"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wireguard-data
+  namespace: vpn
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wireguard
+  namespace: vpn
+  labels:
+    app: wireguard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wireguard
+  template:
+    metadata:
+      labels:
+        app: wireguard
+    spec:
+      containers:
+      - name: wireguard
+        image: linuxserver/wireguard:latest
+        env:
+        - name: PUID
+          valueFrom:
+            configMapKeyRef:
+              name: wireguard-config
+              key: PUID
+        - name: PGID
+          valueFrom:
+            configMapKeyRef:
+              name: wireguard-config
+              key: PGID
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              name: wireguard-config
+              key: TZ
+        - name: SERVERURL
+          valueFrom:
+            configMapKeyRef:
+              name: wireguard-config
+              key: SERVERURL
+        - name: SERVERPORT
+          valueFrom:
+            configMapKeyRef:
+              name: wireguard-config
+              key: SERVERPORT
+        - name: PEERS
+          valueFrom:
+            configMapKeyRef:
+              name: wireguard-config
+              key: PEERS
+        - name: PEERDNS
+          valueFrom:
+            configMapKeyRef:
+              name: wireguard-config
+              key: PEERDNS
+        - name: INTERNAL_SUBNET
+          valueFrom:
+            configMapKeyRef:
+              name: wireguard-config
+              key: INTERNAL_SUBNET
+        - name: ALLOWEDIPS
+          valueFrom:
+            configMapKeyRef:
+              name: wireguard-config
+              key: ALLOWEDIPS
+        ports:
+        - containerPort: 51820
+          protocol: UDP
+          name: wireguard
+        volumeMounts:
+        - name: wireguard-data
+          mountPath: /config
+        - name: lib-modules
+          mountPath: /lib/modules
+          readOnly: true
+        securityContext:
+          capabilities:
+            add:
+              - NET_ADMIN
+              - SYS_MODULE
+          privileged: true
+      volumes:
+      - name: wireguard-data
+        persistentVolumeClaim:
+          claimName: wireguard-data
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+          type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wireguard
+  namespace: vpn
+spec:
+  type: LoadBalancer
+  selector:
+    app: wireguard
+  ports:
+  - protocol: UDP
+    port: 51820
+    targetPort: 51820
+    name: wireguard
+
