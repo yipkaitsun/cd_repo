@@ -7,4 +7,5 @@ metadata:
 data:
   PEERS: "3"
   SERVERURL: "172.31.14.164"  # Update with your actual server IP after deployment
+  MTU: "1420"
 

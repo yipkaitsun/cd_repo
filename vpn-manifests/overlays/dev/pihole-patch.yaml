@@ -6,6 +6,8 @@ metadata:
   namespace: vpn
 data:
   WEBPASSWORD: "dev-admin-password"
+  DNS1: "1.1.1.1"         # Cloudflare (fast)
+  DNS2: "1.0.0.1"         # Cloudflare backup
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

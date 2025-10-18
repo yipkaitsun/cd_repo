@@ -22,6 +22,8 @@ spec:
   resources:
     requests:
       storage: 2Gi
+    limits:
+      storage: 4Gi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -34,6 +36,8 @@ spec:
   resources:
     requests:
       storage: 1Gi
+    limits:
+      storage: 2Gi
 ---
 apiVersion: apps/v1
 kind: Deployment

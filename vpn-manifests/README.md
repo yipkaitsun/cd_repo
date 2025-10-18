@@ -86,17 +86,20 @@ git push origin main
 ArgoCD will auto-sync (dev) or wait for manual sync (prod).
 
 ### Step 5: Get Client Configurations
-
 ```bash
-# Get pod name
-POD=$(kubectl get pod -n vpn -l app=wireguard -o jsonpath='{.items[0].metadata.name}')
+POD=$(sudo kubectl get pod -n vpn -l app=wireguard -o jsonpath='{.items[0].metadata.name}')
 
-# Get peer1 config for desktop/laptop
-kubectl exec -n vpn $POD -- cat /config/peer1/peer1.conf > peer1.conf
+POD=$(sudo kubectl get pod -n vpn -l app=wireguard -o jsonpath='{.items[0].metadata.name}')
 
-# Get QR code for mobile
-kubectl exec -n vpn $POD -- cat /config/peer1/peer1.png | base64 -d > peer1-qr.png
+sudo kubectl exec -n vpn $POD -- ls -la /config/
+
+sudo kubectl exec -n vpn $POD -- ls -la /config/peer1/ 2>/dev/null || echo "peer1 directory not found"
+
+POD=$(sudo kubectl get pod -n vpn -l app=pihole -o jsonpath='{.items[0].metadata.name}')
+
+sudo kubectl exec -n vpn $POD -- pihole setpassword 'dev-admin-password'
 ```
+
 
 ### Step 6: Connect and Test
 
@@ -243,11 +246,11 @@ kubectl logs -n vpn deployment/pihole -f
 
 ```bash
 # WireGuard connections
-POD=$(kubectl get pod -n vpn -l app=wireguard -o jsonpath='{.items[0].metadata.name}')
+POD=$(sudo kubectl get pod -n vpn -l app=wireguard -o jsonpath='{.items[0].metadata.name}')
 kubectl exec -n vpn $POD -- wg show
 
 # Pi-hole stats
-kubectl exec -n vpn deployment/pihole -- pihole -c -e
+sudo kubectl exec -n vpn deployment/pihole -- pihole -c -e
 ```
 
 ## 🛠️ Troubleshooting
