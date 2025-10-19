@@ -24,12 +24,12 @@ echo "✅ Certificate generated"
 
 # Create Kubernetes secret
 echo "🔧 Creating Kubernetes secret..."
-kubectl create namespace keycloak --dry-run=client -o yaml | kubectl apply -f -
-kubectl create secret tls keycloak-tls \
+sudo kubectl create namespace keycloak --dry-run=client -o yaml | sudo kubectl apply -f -
+sudo kubectl create secret tls keycloak-tls \
   --cert=tls.crt \
   --key=tls.key \
   -n keycloak \
-  --dry-run=client -o yaml | kubectl apply -f -
+  --dry-run=client -o yaml | sudo kubectl apply -f -
 
 echo "✅ Secret created: keycloak-tls"
 
