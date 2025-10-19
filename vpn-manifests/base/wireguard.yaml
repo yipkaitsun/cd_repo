@@ -25,12 +25,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
-  storage: 1Gi
+      storage: 1Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
