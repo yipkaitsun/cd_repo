@@ -1,0 +1,20 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: keycloak
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: CHANGE-THIS-POSTGRES-PASSWORD  # ⚠️ CHANGE THIS!
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: keycloak
+spec:
+  resources:
+    requests:
+      storage: 10Gi  # Larger for production
+

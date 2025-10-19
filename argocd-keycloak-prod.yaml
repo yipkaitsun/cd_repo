@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keycloak-prod
+  namespace: argocd
+spec:
+  destination:
+    namespace: keycloak
+    server: https://kubernetes.default.svc
+  source:
+    path: keycloak-manifests/overlays/prod
+    repoURL: https://github.com/yipkaitsun/cd_repo.git
+    targetRevision: HEAD
+  project: default
+  syncPolicy:
+    # Manual sync for production
+    syncOptions:
+    - CreateNamespace=true
+
