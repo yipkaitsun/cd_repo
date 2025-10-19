@@ -5,9 +5,9 @@ namespace: keycloak
 
 resources:
   - ../../base
-  - ingress.yaml
 
 patches:
+  - path: ingress.yaml
   - path: keycloak-patch.yaml
   - path: postgres-patch.yaml
   - path: service-patch.yaml
