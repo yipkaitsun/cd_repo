@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  type: ClusterIP  # Use ClusterIP since ingress handles external access
+  ports:
+  - port: 8081
+    targetPort: 8080
+    protocol: TCP
+    name: http
+
