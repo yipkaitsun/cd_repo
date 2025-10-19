@@ -17,5 +17,9 @@ metadata:
 data:
   KC_HOSTNAME_STRICT: "false"
   KC_HTTP_ENABLED: "true"
+  KC_HTTPS_ENABLED: "true"
+  KC_HTTPS_CERTIFICATE_FILE: "/etc/keycloak-tls/tls.crt"
+  KC_HTTPS_CERTIFICATE_KEY_FILE: "/etc/keycloak-tls/tls.key"
+  KC_HTTPS_PORT: "8443"
   
 

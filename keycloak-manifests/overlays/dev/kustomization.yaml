@@ -9,4 +9,6 @@ resources:
 patches:
   - path: keycloak-patch.yaml
   - path: postgres-patch.yaml
+  - path: deployment-patch.yaml
+  - path: service-patch.yaml
 
