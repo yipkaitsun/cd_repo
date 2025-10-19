@@ -28,10 +28,9 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-  - host: keycloak.18.183.57.208.nip.io
-    http:
+  - http:
       paths:
-      - path: /
+      - path: /keycloak
         pathType: Prefix
         backend:
           service:
