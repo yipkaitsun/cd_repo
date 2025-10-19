@@ -123,7 +123,7 @@ metadata:
   name: keycloak
   namespace: keycloak
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   selector:
     app: keycloak
   ports:
