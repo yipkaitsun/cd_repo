@@ -13,7 +13,7 @@ spec:
   tls:
   - hosts:
     - ykt-piserver.zapto.org
-    secretName: keycloak-letsencrypt-cert
+    secretName: noip-tls-secret
   rules:
   - host: ykt-piserver.zapto.org
     http:
