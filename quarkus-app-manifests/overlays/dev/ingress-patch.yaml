@@ -8,24 +8,24 @@ metadata:
     environment: dev
   annotations:
     argocd.argoproj.io/tracking-id: quarkus-app-dev:networking.k8s.io/Ingress:default/quarkus-app-ingress
-    cert-manager.io/cluster-issuer: letsencrypt-prod  # Triggers auto-cert
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    # cert-manager.io/cluster-issuer: letsencrypt-prod  # Disabled: using shared cert to avoid rate limit
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: 'true'
-    traefik.ingress.kubernetes.io/router.priority: '20'
+    traefik.ingress.kubernetes.io/router.priority: '30'  # Higher priority than Keycloak (20)
 spec:
   ingressClassName: traefik
   tls:
     - hosts:
         - ykt-piserver.zapto.org
-      secretName: quarkus-letsencrypt-cert  # Auto-created/renewed
+      secretName: noip-tls-secret  # Shared certificate with Keycloak
   rules:
     - host: ykt-piserver.zapto.org
       http:
         paths:
-          - path: /api
+          - path: /api/route
             pathType: Prefix
             backend:
               service:
                 name: quarkus-service
                 port:
-                  number: 8082
+                  number: 8080
