@@ -2,21 +2,30 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: quarkus-app-ingress
+  namespace: default
+  labels:
+    app: quarkus-app
+    environment: dev
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web
-    traefik.ingress.kubernetes.io/router.priority: "10"
+    argocd.argoproj.io/tracking-id: quarkus-app-dev:networking.k8s.io/Ingress:default/quarkus-app-ingress
+    cert-manager.io/cluster-issuer: letsencrypt-prod  # Triggers auto-cert
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: 'true'
+    traefik.ingress.kubernetes.io/router.priority: '20'
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - ykt-piserver.zapto.org
+      secretName: quarkus-letsencrypt-cert  # Auto-created/renewed
   rules:
-  - host: ykt-piserver.zapto.org
-    http:
-      paths:
-      - path: /api
-        pathType: Prefix
-        backend:
-          service:
-            name: quarkus-service
-            port:
-              number: 8082
-
-
+    - host: ykt-piserver.zapto.org
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: quarkus-service
+                port:
+                  number: 8082
