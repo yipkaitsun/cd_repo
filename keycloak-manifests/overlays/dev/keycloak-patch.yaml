@@ -1,5 +1,18 @@
 ---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-config
+  namespace: keycloak
+data:
+  KC_HOSTNAME: "ykt-piserver.zapto.org"
+  KC_HOSTNAME_STRICT: "false"
+  KC_HTTP_ENABLED: "true"
+  KC_PROXY: "edge"
+  KC_HEALTH_ENABLED: "true"
+  KC_METRICS_ENABLED: "true"
+---
+apiVersion: v1
 kind: Secret
 metadata:
   name: keycloak-secret
@@ -8,18 +21,4 @@ type: Opaque
 stringData:
   KEYCLOAK_ADMIN: admin
   KEYCLOAK_ADMIN_PASSWORD: dev-admin-password
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: keycloak-config
-  namespace: keycloak
-data:
-  KC_HOSTNAME_STRICT: "false"
-  KC_HTTP_ENABLED: "true"
-  KC_HTTPS_ENABLED: "true"
-  KC_HTTPS_CERTIFICATE_FILE: "/etc/keycloak-tls/tls.crt"
-  KC_HTTPS_CERTIFICATE_KEY_FILE: "/etc/keycloak-tls/tls.key"
-  KC_HTTPS_PORT: "8443"
-  
 

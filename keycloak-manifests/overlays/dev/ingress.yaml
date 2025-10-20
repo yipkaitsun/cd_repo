@@ -6,14 +6,14 @@ metadata:
   namespace: keycloak
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
   ingressClassName: traefik
   tls:
   - hosts:
     - ykt-piserver.zapto.org
-    secretName: noip-tls-secret
+    secretName: keycloak-letsencrypt-cert
   rules:
   - host: ykt-piserver.zapto.org
     http:

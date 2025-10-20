@@ -89,8 +89,6 @@ ArgoCD will auto-sync (dev) or wait for manual sync (prod).
 ```bash
 POD=$(sudo kubectl get pod -n vpn -l app=wireguard -o jsonpath='{.items[0].metadata.name}')
 
-POD=$(sudo kubectl get pod -n vpn -l app=wireguard -o jsonpath='{.items[0].metadata.name}')
-
 sudo kubectl exec -n vpn $POD -- ls -la /config/
 
 sudo kubectl exec -n vpn $POD -- ls -la /config/peer1/ 2>/dev/null || echo "peer1 directory not found"
@@ -99,12 +97,9 @@ POD=$(sudo kubectl get pod -n vpn -l app=pihole -o jsonpath='{.items[0].metadata
 
 sudo kubectl exec -n vpn $POD -- pihole setpassword 'dev-admin-password'
 
-
-
 sudo kubectl exec -n vpn $POD -- bash -c \
   "echo 'cache-size=10000' >> /etc/dnsmasq.d/99-custom.conf"
 
-kubectl exec -n vpn $POD -- pihole restartdns
 ```
 
 
