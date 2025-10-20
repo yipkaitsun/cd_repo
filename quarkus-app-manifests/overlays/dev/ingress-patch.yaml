@@ -22,7 +22,7 @@ spec:
     - host: ykt-piserver.zapto.org
       http:
         paths:
-          - path: /api/route
+          - path: /api
             pathType: Prefix
             backend:
               service:
