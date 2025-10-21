@@ -17,16 +17,7 @@ Internet → WireGuard VPN → Pi-hole DNS (blocks ads) → Upstream DNS → Int
 
 ## Setup
 
-### 1. Copy TLS Certificate
-
-The Pi-hole web interface uses the same TLS certificate as Keycloak/Quarkus:
-
-```bash
-# Copy certificate from keycloak namespace to vpn namespace
-./copy-tls-secret.sh
-```
-
-### 2. Deploy with ArgoCD
+### 1. Deploy with ArgoCD
 
 The VPN stack is deployed via ArgoCD:
 
@@ -40,7 +31,7 @@ kubectl apply -f ../argocd-vpn-dev.yaml
 kubectl apply -f ../argocd-vpn-prod.yaml
 ```
 
-### 3. Get VPN Client Configuration
+### 2. Get VPN Client Configuration
 
 After WireGuard is deployed:
 
@@ -54,7 +45,7 @@ kubectl exec -n vpn $(kubectl get pods -n vpn -l app=wireguard -o jsonpath='{.it
 # Available peers: peer1, peer2, peer3, peer4, peer5
 ```
 
-### 4. Open Firewall Port
+### 3. Open Firewall Port
 
 WireGuard requires UDP port 51820 to be open in your cloud provider's security group/firewall.
 
@@ -84,23 +75,18 @@ gcloud compute firewall-rules create allow-wireguard \
 
 ### Pi-hole Web UI
 
-**Dev:**
-```
-https://pihole.ykt-piserver.zapto.org/admin
-Password: dev-admin-password
-```
+**Internal Access Only (Secure):**
 
-**Prod:**
-```
-https://pihole.ykt-piserver.zapto.org/admin
-Password: (set in prod overlay)
-```
-
-**Or via port-forward (no ingress needed):**
 ```bash
+# Port-forward to access locally
 kubectl port-forward -n vpn svc/pihole-web 8888:80
-# Then open: http://localhost:8888/admin
+
+# Then open in browser: http://localhost:8888/admin
 ```
+
+**Passwords:**
+- **Dev**: `dev-admin-password`
+- **Prod**: Set in prod overlay (change `CHANGE-THIS-SECURE-PASSWORD`)
 
 ## Configuration
 
@@ -220,14 +206,14 @@ kubectl exec -n vpn $PIHOLE_POD -- pihole -c
 ### Pi-hole Web UI Not Accessible
 
 ```bash
-# Check ingress
-kubectl get ingress -n vpn pihole-ingress
+# Check if Pi-hole service is running
+kubectl get svc -n vpn pihole-web
 
-# Verify TLS secret exists
-kubectl get secret noip-tls-secret -n vpn
+# Check if Pi-hole pod is running
+kubectl get pods -n vpn -l app=pihole
 
-# If secret missing, run:
-./copy-tls-secret.sh
+# If running, use port-forward:
+kubectl port-forward -n vpn svc/pihole-web 8888:80
 ```
 
 ### Website Not Loading (False Positive)
@@ -278,19 +264,19 @@ kubectl cp vpn/$WIREGUARD_POD:/config ./wireguard-backup
 ## Architecture Notes
 
 - **WireGuard LoadBalancer**: Exposes UDP 51820 externally
-- **Pi-hole ClusterIP (10.43.100.100)**: Fixed IP for DNS
-- **Pi-hole Web ClusterIP**: Internal only, accessed via ingress or port-forward
-- **Shared TLS Certificate**: Uses same cert as Keycloak/Quarkus (noip-tls-secret)
+- **Pi-hole DNS ClusterIP (10.43.100.100)**: Fixed IP for DNS queries from VPN clients
+- **Pi-hole Web ClusterIP**: Internal only, accessed via port-forward (no public exposure)
+- **No Ingress for Pi-hole**: More secure, admin UI not exposed to internet
 
 ## Features
 
 ✅ **Network-wide ad blocking** for all VPN users
 ✅ **Encrypted VPN tunnel** with WireGuard
-✅ **HTTPS web interface** for Pi-hole
+✅ **Secure internal-only Pi-hole admin** (no public exposure)
 ✅ **5 pre-configured VPN clients**
 ✅ **Works on mobile and desktop**
 ✅ **Automatic ArgoCD deployment**
-✅ **Shared TLS certificate** (no rate limits)
+✅ **Simple port-forward access** to admin dashboard
 
 ## Support
 

@@ -144,30 +144,6 @@ spec:
     targetPort: 53
     protocol: UDP
     name: dns-udp
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: pihole-ingress
-  namespace: vpn
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-spec:
-  ingressClassName: traefik
-  tls:
-  - hosts:
-    - pihole.vpn.local
-    secretName: pihole-tls-secret
-  rules:
-  - host: pihole.vpn.local
-    http:
-      paths:
-      - path: /admin
-        pathType: Prefix
-        backend:
-          service:
-            name: pihole-web
-            port:
-              number: 80
+# Ingress removed - Pi-hole is internal only
+# Access via: kubectl port-forward -n vpn svc/pihole-web 8888:80
 

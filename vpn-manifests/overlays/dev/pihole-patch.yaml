@@ -8,32 +8,8 @@ data:
   WEBPASSWORD: "dev-admin-password"
   DNS1: "1.1.1.1"         # Cloudflare (fast)
   DNS2: "1.0.0.1"         # Cloudflare backup
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: pihole-ingress
-  namespace: vpn
-  annotations:
-    # cert-manager.io/cluster-issuer: letsencrypt-prod  # Disabled: using shared cert to avoid rate limit
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.priority: "15"  # Lower than Keycloak (20), higher than catch-all
-spec:
-  ingressClassName: traefik
-  tls:
-  - hosts:
-    - pihole.ykt-piserver.zapto.org
-    secretName: noip-tls-secret  # Shared certificate
-  rules:
-  - host: pihole.ykt-piserver.zapto.org
-    http:
-      paths:
-      - path: /admin
-        pathType: Prefix
-        backend:
-          service:
-            name: pihole-web
-            port:
-              number: 80
+# Pi-hole ingress removed for security
+# Access Pi-hole via port-forward only:
+# kubectl port-forward -n vpn svc/pihole-web 8888:80
+# Then open: http://localhost:8888/admin
 
