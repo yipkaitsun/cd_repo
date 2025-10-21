@@ -12,12 +12,22 @@ kind: Ingress
 metadata:
   name: pihole-ingress
   namespace: vpn
+  annotations:
+    # cert-manager.io/cluster-issuer: letsencrypt-prod  # Disabled: using shared cert to avoid rate limit
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.priority: "15"  # Lower than Keycloak (20), higher than catch-all
 spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - pihole.ykt-piserver.zapto.org
+    secretName: noip-tls-secret  # Shared certificate
   rules:
-  - host: pihole-prod.vpn.local
+  - host: pihole.ykt-piserver.zapto.org
     http:
       paths:
-      - path: /
+      - path: /admin
         pathType: Prefix
         backend:
           service:

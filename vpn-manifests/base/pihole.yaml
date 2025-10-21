@@ -151,14 +151,19 @@ metadata:
   name: pihole-ingress
   namespace: vpn
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
   ingressClassName: traefik
+  tls:
+  - hosts:
+    - pihole.vpn.local
+    secretName: pihole-tls-secret
   rules:
   - host: pihole.vpn.local
     http:
       paths:
-      - path: /
+      - path: /admin
         pathType: Prefix
         backend:
           service:

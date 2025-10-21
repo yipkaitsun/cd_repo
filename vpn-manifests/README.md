@@ -1,358 +1,299 @@
-# VPN Infrastructure with WireGuard + Pi-hole
+# VPN Manifests (WireGuard + Pi-hole)
 
-Complete VPN solution with WireGuard VPN server and Pi-hole DNS ad-blocking, managed by ArgoCD.
+This directory contains Kubernetes manifests for deploying a VPN solution with built-in ad blocking.
 
-## 🎯 What This Provides
+## Components
 
-- **WireGuard VPN Server**: Secure, modern VPN with high performance
-- **Pi-hole Ad-Blocker**: DNS-level ad and tracker blocking
-- **Integrated DNS**: WireGuard automatically uses Pi-hole for DNS
-- **GitOps Ready**: Fully managed by ArgoCD
-- **Multi-Environment**: Separate dev and prod configurations
+1. **WireGuard** - Fast, modern VPN server
+2. **Pi-hole** - Network-wide ad blocker via DNS filtering
 
-## 📁 Directory Structure
+## Architecture
 
 ```
-vpn-manifests/
-├── base/
-│   ├── wireguard.yaml         # WireGuard VPN server
-│   ├── pihole.yaml            # Pi-hole ad blocker + DNS
-│   └── kustomization.yaml     # Base kustomization
-└── overlays/
-    ├── dev/
-    │   ├── wireguard-patch.yaml   # 3 peers, dev settings
-    │   ├── pihole-patch.yaml      # Dev password
-    │   └── kustomization.yaml
-    └── prod/
-        ├── wireguard-patch.yaml   # 10 peers, prod settings
-        ├── pihole-patch.yaml      # Prod password (CHANGE THIS!)
-        └── kustomization.yaml
+Internet → WireGuard VPN → Pi-hole DNS (blocks ads) → Upstream DNS → Internet
+                                ↓
+                        Ad domains blocked!
 ```
 
-## 🚀 Quick Start
+## Setup
 
-### Prerequisites
+### 1. Copy TLS Certificate
 
-- Kubernetes cluster with ArgoCD installed
-- kubectl configured
-- Git repository pushed to GitHub
-
-### Step 1: Deploy with ArgoCD
-
-**Development:**
-```bash
-kubectl apply -f argocd-vpn-dev.yaml
-```
-
-**Production:**
-```bash
-kubectl apply -f argocd-vpn-prod.yaml
-```
-
-### Step 2: Wait for Deployment
+The Pi-hole web interface uses the same TLS certificate as Keycloak/Quarkus:
 
 ```bash
-# Watch pods starting (takes 2-3 minutes)
-kubectl get pods -n vpn -w
+# Copy certificate from keycloak namespace to vpn namespace
+./copy-tls-secret.sh
 ```
 
-### Step 3: Get LoadBalancer IP
+### 2. Deploy with ArgoCD
+
+The VPN stack is deployed via ArgoCD:
+
+**Dev:**
+```bash
+kubectl apply -f ../argocd-vpn-dev.yaml
+```
+
+**Prod:**
+```bash
+kubectl apply -f ../argocd-vpn-prod.yaml
+```
+
+### 3. Get VPN Client Configuration
+
+After WireGuard is deployed:
 
 ```bash
-kubectl get svc -n vpn wireguard
+# View QR codes for mobile (scan with WireGuard app)
+kubectl logs -n vpn -l app=wireguard
 
-# Copy the EXTERNAL-IP
+# Get config file for desktop
+kubectl exec -n vpn $(kubectl get pods -n vpn -l app=wireguard -o jsonpath='{.items[0].metadata.name}') -- cat /config/peer1/peer1.conf
+
+# Available peers: peer1, peer2, peer3, peer4, peer5
 ```
 
-### Step 4: Update Server IP in Git
+### 4. Open Firewall Port
 
-Edit the appropriate file:
-- Dev: `vpn-manifests/overlays/dev/wireguard-patch.yaml`
-- Prod: `vpn-manifests/overlays/prod/wireguard-patch.yaml`
+WireGuard requires UDP port 51820 to be open in your cloud provider's security group/firewall.
 
-Change `SERVERURL: "auto"` to your EXTERNAL-IP:
-```yaml
-data:
-  SERVERURL: "YOUR-EXTERNAL-IP-HERE"
-```
-
-Commit and push:
+**AWS:**
 ```bash
-git add vpn-manifests/overlays/*/wireguard-patch.yaml
-git commit -m "Update WireGuard server IP"
-git push origin main
+aws ec2 authorize-security-group-ingress \
+    --group-id sg-xxxxxxxxx \
+    --protocol udp \
+    --port 51820 \
+    --cidr 0.0.0.0/0
 ```
 
-ArgoCD will auto-sync (dev) or wait for manual sync (prod).
-
-### Step 5: Get Client Configurations
+**GCP:**
 ```bash
-POD=$(sudo kubectl get pod -n vpn -l app=wireguard -o jsonpath='{.items[0].metadata.name}')
-
-sudo kubectl exec -n vpn $POD -- ls -la /config/
-
-sudo kubectl exec -n vpn $POD -- ls -la /config/peer1/ 2>/dev/null || echo "peer1 directory not found"
-
-POD=$(sudo kubectl get pod -n vpn -l app=pihole -o jsonpath='{.items[0].metadata.name}')
-
-sudo kubectl exec -n vpn $POD -- pihole setpassword 'dev-admin-password'
-
-sudo kubectl exec -n vpn $POD -- bash -c \
-  "echo 'cache-size=10000' >> /etc/dnsmasq.d/99-custom.conf"
-
+gcloud compute firewall-rules create allow-wireguard \
+    --allow udp:51820 \
+    --target-tags vpn \
+    --description="WireGuard VPN"
 ```
 
+## Access
 
-### Step 6: Connect and Test
+### WireGuard VPN
+- **Protocol:** UDP
+- **Port:** 51820
+- **Clients:** iOS, Android, macOS, Windows, Linux
 
-1. Import config into WireGuard client
-2. Activate connection
-3. Test: `curl ifconfig.me` (should show VPN server IP)
+### Pi-hole Web UI
 
-## 🔧 Configuration
+**Dev:**
+```
+https://pihole.ykt-piserver.zapto.org/admin
+Password: dev-admin-password
+```
 
-### WireGuard Settings
+**Prod:**
+```
+https://pihole.ykt-piserver.zapto.org/admin
+Password: (set in prod overlay)
+```
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| SERVERURL | Public IP/domain | auto |
-| SERVERPORT | UDP port | 51820 |
-| PEERS | Number of client configs | 5 (dev: 3, prod: 10) |
-| PEERDNS | DNS server (Pi-hole) | 10.43.100.100 |
-| INTERNAL_SUBNET | VPN internal network | 10.13.13.0 |
-
-### Pi-hole Settings
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| WEBPASSWORD | Admin password | dev-admin-password / CHANGE-THIS |
-| SERVERIP | ClusterIP | 10.43.100.100 |
-| DNS1 | Upstream DNS | 1.1.1.1 (Cloudflare) |
-| DNS2 | Backup DNS | 1.0.0.1 |
-
-## 📊 Accessing Services
-
-### Pi-hole Dashboard
-
+**Or via port-forward (no ingress needed):**
 ```bash
-# Port forward
-kubectl port-forward -n vpn svc/pihole-web 8080:80
-
-# Open browser
-open http://localhost:8080/admin
-
-# Password: see pihole-patch.yaml for your environment
+kubectl port-forward -n vpn svc/pihole-web 8888:80
+# Then open: http://localhost:8888/admin
 ```
 
-### WireGuard Configs
+## Configuration
 
+### WireGuard Environment Variables
+
+Set in `wireguard-config` ConfigMap:
+
+- `SERVERURL`: Public IP or domain of your VPN server
+- `SERVERPORT`: 51820 (default)
+- `PEERS`: Number of client configs to generate (default: 5)
+- `PEERDNS`: DNS server for VPN clients (10.43.100.100 = Pi-hole)
+- `INTERNAL_SUBNET`: VPN internal network (10.13.13.0/24)
+- `ALLOWEDIPS`: Traffic to route through VPN (0.0.0.0/0 = all traffic)
+
+### Pi-hole Configuration
+
+Set in `pihole-config` ConfigMap:
+
+- `WEBPASSWORD`: Admin dashboard password
+- `DNS1`: Upstream DNS server (1.1.1.1 = Cloudflare)
+- `DNS2`: Backup DNS server (1.0.0.1 = Cloudflare)
+
+### Adding Ad Blocklists
+
+1. Access Pi-hole web UI
+2. Go to **Group Management** → **Adlists**
+3. Add blocklist URLs (see: https://firebog.net/)
+4. Update Gravity: **Tools** → **Update Gravity**
+
+Or via command line:
 ```bash
-# List all peer configs
-POD=$(kubectl get pod -n vpn -l app=wireguard -o jsonpath='{.items[0].metadata.name}')
-kubectl exec -n vpn $POD -- ls -la /config/
+PIHOLE_POD=$(kubectl get pods -n vpn -l app=pihole -o jsonpath='{.items[0].metadata.name}')
 
-# Get specific peer
-kubectl exec -n vpn $POD -- cat /config/peer2/peer2.conf
+# Add blocklist
+kubectl exec -n vpn $PIHOLE_POD -- sqlite3 /etc/pihole/gravity.db \
+  "INSERT INTO adlist (address, enabled, comment) VALUES ('https://example.com/blocklist.txt', 1, 'Description');"
+
+# Update gravity
+kubectl exec -n vpn $PIHOLE_POD -- pihole -g
 ```
 
-## 🔄 Updating Configuration
+## Testing
 
-### Add More VPN Users
+### Verify VPN Connection
 
-1. Edit overlay file:
-```yaml
-# vpn-manifests/overlays/dev/wireguard-patch.yaml
-data:
-  PEERS: "5"  # Increase number
-```
+1. **Connect to VPN** using WireGuard app
+2. **Check IP changed:**
+   ```bash
+   curl ifconfig.me
+   # Should show your server IP
+   ```
+3. **Verify DNS:**
+   ```bash
+   nslookup google.com
+   # Server should be: 10.43.100.100 (Pi-hole)
+   ```
 
-2. Commit and push:
-```bash
-git add vpn-manifests/
-git commit -m "Add more VPN peers"
-git push
-```
+### Test Ad Blocking
 
-3. ArgoCD will sync automatically
+Visit these sites after connecting to VPN:
 
-### Change Pi-hole Password
+1. **D3ward Ad Block Test:**
+   ```
+   https://d3ward.github.io/toolz/adblock.html
+   ```
+   Expected: 90%+ blocked
 
-1. Edit overlay file:
-```yaml
-# vpn-manifests/overlays/prod/pihole-patch.yaml
-data:
-  WEBPASSWORD: "your-new-secure-password"
-```
+2. **DNS Leak Test:**
+   ```
+   https://dnsleaktest.com/
+   ```
+   Expected: Only shows VPN server DNS (no ISP DNS leak)
 
-2. Commit, push, and sync
-
-## 🎨 Architecture
-
-```
-┌─────────────────────────────────────────────┐
-│  Client Devices (Laptops, Phones)          │
-│  - peer1.conf                               │
-│  - peer2.conf                               │
-│  - peer3.conf                               │
-└──────────────┬──────────────────────────────┘
-               │ WireGuard VPN (UDP 51820)
-               ▼
-┌─────────────────────────────────────────────┐
-│  Kubernetes Cluster (vpn namespace)         │
-│                                             │
-│  ┌───────────────┐      ┌─────────────┐   │
-│  │  WireGuard    │─────▶│  Pi-hole    │   │
-│  │  VPN Server   │ DNS  │  Ad-Block   │   │
-│  │  LoadBalancer │      │  DNS Server │   │
-│  └───────────────┘      └─────────────┘   │
-│         │                      │           │
-│         │ PVC                  │ PVC       │
-│         ▼                      ▼           │
-│  wireguard-data           pihole-data      │
-└─────────────────────────────────────────────┘
-         │
-         │ ArgoCD GitOps
-         ▼
-┌─────────────────────────────────────────────┐
-│  Git Repository                             │
-│  github.com/yipkaitsun/cd_repo              │
-└─────────────────────────────────────────────┘
-```
-
-## 🔍 Monitoring
-
-### Check Status
+### Check Pi-hole Statistics
 
 ```bash
-# Application status
-kubectl get applications -n argocd | grep vpn
+PIHOLE_POD=$(kubectl get pods -n vpn -l app=pihole -o jsonpath='{.items[0].metadata.name}')
 
-# Pod status
-kubectl get pods -n vpn
+# View stats
+kubectl exec -n vpn $PIHOLE_POD -- pihole -c -e
 
-# Service status
-kubectl get svc -n vpn
+# Watch queries in real-time
+kubectl exec -n vpn $PIHOLE_POD -- pihole -t
+
+# Check status
+kubectl exec -n vpn $PIHOLE_POD -- pihole status
 ```
 
-### View Logs
-
-```bash
-# WireGuard logs
-kubectl logs -n vpn deployment/wireguard -f
-
-# Pi-hole logs
-kubectl logs -n vpn deployment/pihole -f
-```
-
-### Check VPN Stats
-
-```bash
-# WireGuard connections
-POD=$(sudo kubectl get pod -n vpn -l app=wireguard -o jsonpath='{.items[0].metadata.name}')
-kubectl exec -n vpn $POD -- wg show
-
-# Pi-hole stats
-sudo kubectl exec -n vpn deployment/pihole -- pihole -c -e
-```
-
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### VPN Not Connecting
 
-1. Check LoadBalancer has external IP:
 ```bash
+# Check WireGuard logs
+kubectl logs -n vpn -l app=wireguard -f
+
+# Verify service has external IP
 kubectl get svc -n vpn wireguard
+
+# Check if port 51820 is open
+nc -vuz YOUR_SERVER_IP 51820
 ```
 
-2. Verify SERVERURL is set correctly in git
+### Ads Not Being Blocked
 
-3. Check firewall allows UDP port 51820
-
-4. View WireGuard logs:
 ```bash
-kubectl logs -n vpn deployment/wireguard --tail=50
-```
-
-### DNS Not Working
-
-1. Check Pi-hole is running:
-```bash
+# Check if Pi-hole is running
 kubectl get pods -n vpn -l app=pihole
+
+# Verify DNS is correct in WireGuard config
+# Should have: DNS = 10.43.100.100
+
+# Check if blocklists are loaded
+kubectl exec -n vpn $PIHOLE_POD -- pihole -c
 ```
 
-2. Verify ClusterIP is correct:
+### Pi-hole Web UI Not Accessible
+
 ```bash
-kubectl get svc -n vpn pihole-dns
-# Should show: 10.43.100.100
+# Check ingress
+kubectl get ingress -n vpn pihole-ingress
+
+# Verify TLS secret exists
+kubectl get secret noip-tls-secret -n vpn
+
+# If secret missing, run:
+./copy-tls-secret.sh
 ```
 
-3. Test DNS from Pi-hole:
+### Website Not Loading (False Positive)
+
 ```bash
-kubectl exec -n vpn deployment/pihole -- dig @127.0.0.1 google.com
+# Whitelist domain in Pi-hole
+kubectl exec -n vpn $PIHOLE_POD -- pihole -w example.com
+
+# Or via web UI: Whitelist section
 ```
 
-### ArgoCD Not Syncing
+## Maintenance
 
-1. Check application:
+### Update WireGuard
+
 ```bash
-kubectl get application vpn-infrastructure-dev -n argocd
+kubectl rollout restart deployment/wireguard -n vpn
 ```
 
-2. Force refresh:
+### Update Pi-hole
+
 ```bash
-argocd app get vpn-infrastructure-dev --refresh
+# Update Pi-hole core
+kubectl exec -n vpn $PIHOLE_POD -- pihole -up
+
+# Update blocklists
+kubectl exec -n vpn $PIHOLE_POD -- pihole -g
 ```
 
-3. Manual sync:
+### Backup Configuration
+
 ```bash
-argocd app sync vpn-infrastructure-dev
+# Backup Pi-hole config
+kubectl cp vpn/$PIHOLE_POD:/etc/pihole ./pihole-backup
+
+# Backup WireGuard configs
+kubectl cp vpn/$WIREGUARD_POD:/config ./wireguard-backup
 ```
 
-## 🔐 Security Recommendations
+## Security Notes
 
-### Before Production
+1. **Change default Pi-hole password** in prod overlay
+2. **Limit WireGuard port** to specific IPs if possible
+3. **Regularly update** containers and blocklists
+4. **Monitor Pi-hole logs** for suspicious queries
+5. **Use strong passwords** for VPN clients
 
-- [ ] Change Pi-hole password in `overlays/prod/pihole-patch.yaml`
-- [ ] Update SERVERURL with actual server IP
-- [ ] Review firewall rules
-- [ ] Limit VPN user access
-- [ ] Enable TLS for Pi-hole ingress (optional)
+## Architecture Notes
 
-### Regular Maintenance
+- **WireGuard LoadBalancer**: Exposes UDP 51820 externally
+- **Pi-hole ClusterIP (10.43.100.100)**: Fixed IP for DNS
+- **Pi-hole Web ClusterIP**: Internal only, accessed via ingress or port-forward
+- **Shared TLS Certificate**: Uses same cert as Keycloak/Quarkus (noip-tls-secret)
 
-- [ ] Rotate WireGuard peer configs periodically
-- [ ] Review Pi-hole logs for suspicious activity
-- [ ] Update images regularly
-- [ ] Monitor resource usage
-- [ ] Backup client configurations
+## Features
 
-## 📚 Additional Resources
+✅ **Network-wide ad blocking** for all VPN users
+✅ **Encrypted VPN tunnel** with WireGuard
+✅ **HTTPS web interface** for Pi-hole
+✅ **5 pre-configured VPN clients**
+✅ **Works on mobile and desktop**
+✅ **Automatic ArgoCD deployment**
+✅ **Shared TLS certificate** (no rate limits)
 
-- [WireGuard Documentation](https://www.wireguard.com/)
-- [Pi-hole Documentation](https://docs.pi-hole.net/)
-- [ArgoCD Documentation](https://argo-cd.readthedocs.io/)
-- [Kustomize Documentation](https://kustomize.io/)
+## Support
 
-## 💡 Tips
-
-**Get all peer configs at once:**
-```bash
-POD=$(kubectl get pod -n vpn -l app=wireguard -o jsonpath='{.items[0].metadata.name}')
-for i in {1..3}; do
-  kubectl exec -n vpn $POD -- cat /config/peer$i/peer$i.conf > peer$i.conf
-done
-```
-
-**Test ad blocking:**
-Visit https://d3ward.github.io/toolz/adblock.html while connected to VPN
-
-**Whitelist a domain:**
-```bash
-kubectl exec -n vpn deployment/pihole -- pihole -w example.com
-```
-
-**Check bandwidth usage:**
-```bash
-kubectl exec -n vpn $POD -- wg show wg0 transfer
-```
-
+- **WireGuard**: https://www.wireguard.com/
+- **Pi-hole**: https://pi-hole.net/
+- **Traefik**: https://doc.traefik.io/traefik/
