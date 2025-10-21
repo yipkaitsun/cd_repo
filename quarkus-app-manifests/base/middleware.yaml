@@ -7,5 +7,3 @@ spec:
   stripPrefix:
     prefixes:
       - /api
-    forceSlash: false
-
