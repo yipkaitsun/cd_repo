@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: quarkus-app
 spec:
-  replicas: 2
+  replicas: 1
   template:
     spec:
       containers:
@@ -13,4 +13,11 @@ spec:
           value: "development"
         - name: QUARKUS_LOG_LEVEL
           value: "DEBUG"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
 

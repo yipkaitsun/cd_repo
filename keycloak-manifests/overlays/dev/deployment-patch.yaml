@@ -1,0 +1,39 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: keycloak
+        resources:
+          requests:
+            cpu: 250m
+            memory: 384Mi
+          limits:
+            cpu: 1000m
+            memory: 768Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: keycloak
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: postgres
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+
