@@ -12,7 +12,7 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: 'true'
     traefik.ingress.kubernetes.io/router.priority: '30'  # Higher priority than Keycloak (20)
-    traefik.ingress.kubernetes.io/router.middlewares: default-strip-api@kubernetescrd
+    traefik.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: traefik
   tls:
