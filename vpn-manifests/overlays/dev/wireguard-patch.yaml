@@ -5,7 +5,7 @@ metadata:
   name: wireguard-config
   namespace: vpn
 data:
-  PEERS: "3"
+  PEERS: "2"
   SERVERURL: "ykt.myvnc.com"  # Update with your actual server IP after deployment
   MTU: "1420"
 
